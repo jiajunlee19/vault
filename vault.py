@@ -128,12 +128,10 @@ class Vault_Cluster:
     def get_ldap_token(self, ldap_user, ldap_password):
         r = requests.post(
             url = f'{self.vault_url}/v1/auth/ldap/login/{ldap_user}',
-            headers = {
-                'X-Vault-Namespace:': self.namespace
-            },
             json = {
                 'password': ldap_password
-            }
+            },
+            verify = r"c:\path\to\micronCAchain.pem"
         )
         if r.status_code != 200:
             raise AssertionError(f'[{r.status_code}] Failed to get ldap_token ! {r.json()}')
@@ -543,10 +541,10 @@ if __name__ == '__main__':
         vault_cluster = Vault_Cluster(
             vault_url = 'https://vault.micron.com',
             namespace = 'mmpnpi',
-            engine_name = 'kv2'
+            engine_name = 'kv'
         )
 
-        ldap_token = vault_cluster.get_ldap_token(ldap_user='RDR_BEMFG_NPI_P', ldap_password='MMPNPIreader@a1')
+        ldap_token = vault_cluster.get_ldap_token(ldap_user='RDR_BEMFG_NPI_P', ldap_password='MMPNPIrobot@a1')
         print(ldap_token)
 
         # approle_enable =vault_cluster.enable_approle(token=ldap_token)
