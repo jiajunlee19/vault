@@ -6,7 +6,15 @@
 # https://developer.hashicorp.com/vault/docs/concepts/tokens#root-tokens
 
 import requests
+import ssl
 
+# https://stackoverflow.com/questions/61631955/python-requests-ssl-error-during-requests
+class TLSAdapter(requests.adapters.HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        ctx = ssl.create_default_context()
+        ctx.set_ciphers('DEFAULT@SECLEVEL=1')
+        kwargs['ssl_context'] = ctx
+        return super(TLSAdapter, self).init_poolmanager(*args, **kwargs)
 
 class Vault_Cloud:
 
@@ -122,16 +130,18 @@ class Vault_Cluster:
         self.vault_url = vault_url
         self.namespace = namespace
         self.engine_name = engine_name
+
+        self.session = requests.session()
+        self.session.mount('https://', TLSAdapter())
         return
 
         
     def get_ldap_token(self, ldap_user, ldap_password):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/auth/ldap/login/{ldap_user}',
             json = {
                 'password': ldap_password
-            },
-            verify = r"c:\path\to\micronCAchain.pem"
+            }
         )
         if r.status_code != 200:
             raise AssertionError(f'[{r.status_code}] Failed to get ldap_token ! {r.json()}')
