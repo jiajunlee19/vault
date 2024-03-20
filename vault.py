@@ -4,6 +4,7 @@
 # https://developer.hashicorp.com/vault/tutorials/auth-methods/approle
 # https://developer.hashicorp.com/vault/api-docs/auth/approle
 # https://developer.hashicorp.com/vault/docs/concepts/tokens#root-tokens
+# https://developer.hashicorp.com/vault/api-docs/secret/databases
 
 import requests
 import ssl
@@ -146,15 +147,15 @@ class Vault_Cluster:
         if r.status_code != 200:
             raise AssertionError(f'[{r.status_code}] Failed to get ldap_token ! {r.json()}')
         ldap_token = r.json()['auth']['client_token']
-        return r.json()
+        return ldap_token
     
 
     def enable_approle(self, token):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/sys/auth/approle',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             json = {
                 'type': 'approle'
@@ -166,11 +167,11 @@ class Vault_Cluster:
     
 
     def create_policy(self, token, policy_name, secret_path, capabilities=['read']):
-        r = requests.put(
+        r = self.session.put(
             url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             json = {
                 'policy': f'path "{secret_path}" {{ capabilities = {capabilities} }}'
@@ -182,12 +183,14 @@ class Vault_Cluster:
 
     
     def list_roles(self, token):
-        r = requests.request(
-            method='LIST',
+        r = self.session.get(
             url = f'{self.vault_url}/v1/auth/approle/role',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
+            },
+            params = {
+                'list': True
             }
         )
         if r.status_code != 200:
@@ -196,11 +199,11 @@ class Vault_Cluster:
     
 
     def create_role(self, token, role_name, token_policies=['default']):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             json = {
                 'bind_secret_id': True,
@@ -210,7 +213,7 @@ class Vault_Cluster:
                 'token_ttl': '10m',
                 'token_max_ttl': '30m',
                 'token_policies': token_policies,
-                'token_no_default_policiy': True,
+                'token_no_default_policiy': False,
                 'token_num_uses': 0,
                 'token_period': 0,
                 'token_type': 'service'
@@ -222,11 +225,11 @@ class Vault_Cluster:
 
 
     def get_role(self, token, role_name):
-        r = requests.get(
+        r = self.session.get(
             url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             }
         )
         if r.status_code != 200:
@@ -235,11 +238,11 @@ class Vault_Cluster:
 
 
     def delete_role(self, token, role_name):
-        r = requests.delete(
+        r = self.session.delete(
             url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             }
         )
         if r.status_code != 200:
@@ -248,11 +251,11 @@ class Vault_Cluster:
 
 
     def get_role_id(self, token, role_name):
-        r = requests.get(
+        r = self.session.get(
             url = f'{self.vault_url}/v1/auth/approle/role/{role_name}/role-id',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             }
         )
         if r.status_code != 200:
@@ -261,11 +264,11 @@ class Vault_Cluster:
 
 
     def create_secret_id(self, token, role_name):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/auth/approle/role/{role_name}/secret-id',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             json = {
                 'ttl': 600,
@@ -278,11 +281,11 @@ class Vault_Cluster:
     
 
     def destroy_secret_id(self, token, role_name, secret_id):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/auth/approle/role/{role_name}/secret-id/destroy',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             json = {
                 'secret_id': secret_id
@@ -294,11 +297,11 @@ class Vault_Cluster:
 
 
     def get_app_token(self, token, role_id, secrect_id):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/auth/approle/login',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             json = {
                 'role_id': role_id,
@@ -312,11 +315,11 @@ class Vault_Cluster:
 
 
     def list_engines(self, token):
-        r = requests.get(
+        r = self.session.get(
             url = f'{self.vault_url}/v1/sys/mounts',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             }
         )
         if r.status_code != 200:
@@ -325,11 +328,11 @@ class Vault_Cluster:
     
 
     def create_engine(self, token, engine_type='kv-v2'):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/sys/mounts/{self.engine_name}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             data = {
                 'type': engine_type
@@ -341,11 +344,11 @@ class Vault_Cluster:
     
 
     def delete_engine(self, token):
-        r = requests.delete(
+        r = self.session.delete(
             url = f'{self.vault_url}/v1/sys/mounts/{self.engine_name}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             }
         )
         if r.status_code != 200:
@@ -354,12 +357,14 @@ class Vault_Cluster:
     
     
     def list_secrets(self, token, secret_path):
-        r = requests.request(
-            method = 'LIST',
+        r = self.session.get(
             url = f'{self.vault_url}/v1/secret/metadata/{secret_path}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
+            },
+            params = {
+                'list': True
             }
         )
         if r.status_code != 200:
@@ -370,18 +375,18 @@ class Vault_Cluster:
     def get_secret(self, token, secret_path, version=None, wrap=False):
         headers = {
             'X-Vault-Token': token,
-            'X-Vault-Namespace:': self.namespace,
+            'X-Vault-Namespace': self.namespace,
         }
         if wrap:
             headers['X-Vault-Wrap-TTL'] = 120
 
         if version is None:
-            r = requests.get(
+            r = self.session.get(
                 url = f'{self.vault_url}/v1/{self.engine_name}/data/{secret_path}',
                 headers = headers
             )
         else:
-            r = requests.get(
+            r = self.session.get(
                 url = f'{self.vault_url}/v1/{self.engine_name}/data/{secret_path}',
                 headers = headers,
                 params = {
@@ -391,15 +396,15 @@ class Vault_Cluster:
         if r.status_code != 200:
             raise AssertionError(f'[{r.status_code}] Failed to get secret ! {r.json()}')
         secret = r.json()['data']['data']
-        return r.json()
+        return secret
     
 
     def unwrap_secret(self, wrapping_token):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/sys/wrapping/unwrap',
             headers = {
                 'X-Vault-Token': wrapping_token,
-                'X-Vault-Namespace:': self.namespace,
+                'X-Vault-Namespace': self.namespace,
             },
         )
         if r.status_code != 200:
@@ -408,11 +413,11 @@ class Vault_Cluster:
     
     
     def create_secret(self, token, secret_path, secret_name, secret_value):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/{self.engine_name}/data/{secret_path}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             json = {
                 'data': {
@@ -429,11 +434,11 @@ class Vault_Cluster:
     
 
     def update_secret(self, token, secret_path, secret_name, secret_value):
-        r = requests.patch(
+        r = self.session.patch(
             url = f'{self.vault_url}/v1/{self.engine_name}/data/{secret_path}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace,
+                'X-Vault-Namespace': self.namespace,
                 'Content-Type': 'application/merge-patch+json'
             },
             json = {
@@ -449,19 +454,19 @@ class Vault_Cluster:
     
     def delete_secret(self, token, secret_path, versions=[]):
         if len(versions) < 1:
-            r = requests.post(
+            r = self.session.post(
                 url = f'{self.vault_url}/v1/{self.engine_name}/delete/{secret_path}',
                 headers = {
                     'X-Vault-Token': token,
-                    'X-Vault-Namespace:': self.namespace
+                    'X-Vault-Namespace': self.namespace
                 }
             )
         else:
-            r = requests.post(
+            r = self.session.post(
                 url = f'{self.vault_url}/v1/{self.engine_name}/delete/{secret_path}',
                 headers = {
                     'X-Vault-Token': token,
-                    'X-Vault-Namespace:': self.namespace
+                    'X-Vault-Namespace': self.namespace
                 },
                 json = {
                     'versions': versions
@@ -473,11 +478,11 @@ class Vault_Cluster:
     
     
     def undelete_secret(self, token, secret_path, versions):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/{self.engine_name}/undelete/{secret_path}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             json = {
                 'versions': versions
@@ -489,11 +494,11 @@ class Vault_Cluster:
     
 
     def destroy_secret(self, token, secret_path, versions):
-        r = requests.post(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/{self.engine_name}/destroy/{secret_path}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             },
             json = {
                 'versions': versions
@@ -505,11 +510,11 @@ class Vault_Cluster:
     
 
     def destroy_secrets(self, token, secret_path):
-        r = requests.delete(
+        r = self.session.delete(
             url = f'{self.vault_url}/v1/{self.engine_name}/metadata/{secret_path}',
             headers = {
                 'X-Vault-Token': token,
-                'X-Vault-Namespace:': self.namespace
+                'X-Vault-Namespace': self.namespace
             }
         )
         if r.status_code != 200:
@@ -560,13 +565,13 @@ if __name__ == '__main__':
         # approle_enable =vault_cluster.enable_approle(token=ldap_token)
         # print(approle_enable)
 
-        # policy_create = vault_cluster.create_policy(token=ldap_token, policy_name='reader', secret_path='key1', capabilities=['read'])
+        # policy_create = vault_cluster.create_policy(token=ldap_token, policy_name='admin-temp', secret_path='path1*', capabilities=['create', 'read', 'update', 'patch', 'delete', 'list'])
         # print(policy_create)
 
         # roles = vault_cluster.list_roles(token=ldap_token)
         # print(roles)
 
-        # role_create = vault_cluster.create_role(token=ldap_token, role_name='sample-role', token_policies=['reader'])
+        # role_create = vault_cluster.create_role(token=ldap_token, role_name='sample-role', token_policies=['admin-temp'])
         # print(role_create)
 
         # role_id = vault_cluster.get_role(token=ldap_token, role_name='sample-role')
@@ -593,29 +598,29 @@ if __name__ == '__main__':
         # engine_delete = vault_cluster.delete_engine(token=app_token)
         # print(engine_delete)
 
-        # secrets = vault_cluster.list_secrets(token=app_token, secret_path='key1')
+        # secrets = vault_cluster.list_secrets(token=app_token, secret_path='path1')
         # print(secrets)
 
-        # secret = vault_cluster.get_secret(token=app_token, secret_path='key1')
+        # secret = vault_cluster.get_secret(token=app_token, secret_path='path1')
         # print(secret)
 
         # # secret_unwrap = vault_cluster.unwrap_secret(wrapping_token='')
         # # print(secret_unwrap)
 
-        # secret_create = vault_cluster.create_secret(token=app_token, secret_path='key1', secret_name='key1', secret_value='v1')
+        # secret_create = vault_cluster.create_secret(token=app_token, secret_path='path1', secret_name='key1', secret_value='v1')
         # print(secret_create)
 
-        # secret_update = vault_cluster.update_secret(token=app_token, secret_path='key1', secret_name='key1', secret_value='v1')
+        # secret_update = vault_cluster.update_secret(token=app_token, secret_path='path1', secret_name='key1', secret_value='v1')
         # print(secret_update)
 
-        # secret_delete = vault_cluster.delete_secret(token=app_token, secret_path='key1')
+        # secret_delete = vault_cluster.delete_secret(token=app_token, secret_path='path1')
         # print(secret_delete)
 
-        # secret_undelete = vault_cluster.undelete_secret(token=app_token, secret_path='key1', versions=[1])
+        # secret_undelete = vault_cluster.undelete_secret(token=app_token, secret_path='path1', versions=[1])
         # print(secret_undelete)
 
-        # secret_destroy = vault_cluster.destroy_secret(token=app_token, secret_path='key1', versions=[0])
+        # secret_destroy = vault_cluster.destroy_secret(token=app_token, secret_path='path1', versions=[0])
         # print(secret_destroy)
 
-        # secrets_destroy = vault_cluster.destroy_secrets(token=app_token, secret_path='key1')
+        # secrets_destroy = vault_cluster.destroy_secrets(token=app_token, secret_path='path1')
         # print(secrets_destroy)
