@@ -44,7 +44,7 @@ class Vault_Cloud:
                 'audience': 'https://api.hashicorp.cloud'
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get token ! {r.json()}')
  
         token = r.json()['access_token']
@@ -60,7 +60,7 @@ class Vault_Cloud:
                 'Authorization': f'Bearer {token}'
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to list secrets ! {r.json()}')
         
         for secret in r.json()['secrets']:
@@ -79,7 +79,7 @@ class Vault_Cloud:
                 'Authorization': f'Bearer {token}'
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get secret ! {r.json()}')
         
         secret_value = r.json()['secret']['version']['value']
@@ -105,7 +105,7 @@ class Vault_Cloud:
                 'value': secret_value
             },
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create secret ! {r.json()}')
         
         return r.json()
@@ -119,7 +119,7 @@ class Vault_Cloud:
                 'Authorization': f'Bearer {token}'
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to delete secret ! {r.json()}')
         
         return f'Successfully deleted {secret_name}'
@@ -144,7 +144,7 @@ class Vault_Cluster:
                 'password': ldap_password
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get ldap_token ! {r.json()}')
         ldap_token = r.json()['auth']['client_token']
         return ldap_token
@@ -161,42 +161,93 @@ class Vault_Cluster:
                 'type': 'approle'
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get enable approle ! {r.json()}')
+        return r.json()
+
+
+    def list_policies(self, token):
+        r = self.session.request(
+            method = 'LIST',
+            url = f'{self.vault_url}/v1/sys/policies/acl',
+            headers = {
+                'X-Vault-Token': token,
+                'X-Vault-Namespace': self.namespace
+            }
+        )
+        if r.status_code != 200 and r.status_code != 204:
+            raise AssertionError(f'[{r.status_code}] Failed to list policies ! {r.json()}')
         return r.json()
     
 
+    def get_policy(self, token, policy_name):
+        r = self.session.get(
+            url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
+            headers = {
+                'X-Vault-Token': token,
+                'X-Vault-Namespace': self.namespace
+            }
+        )
+        if r.status_code != 200 and r.status_code != 204:
+            raise AssertionError(f'[{r.status_code}] Failed to get policy ! {r.json()}')
+        return r.json()
+
+
     def create_policy(self, token, policy_name, secret_path, capabilities=['read']):
-        r = self.session.put(
+        r = self.session.post(
             url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
             headers = {
                 'X-Vault-Token': token,
                 'X-Vault-Namespace': self.namespace
             },
             json = {
-                'policy': f'path "{secret_path}" {{ capabilities = {capabilities} }}'
+                "policy": "path \"secret/foo\" { capabilities: [\"create\", \"read\", \"update\", \"patch\", \"delete\", \"list\"] }"
             }
         )
-        if r.status_code != 200:
-            raise AssertionError(f'[{r.status_code}] Failed to get create policy ! {r.json()}')
-        return r.json()
+        if r.status_code != 200 and r.status_code != 204:
+            raise AssertionError(f'[{r.status_code}] Failed to create policy !')
+        return 'Sucessfully created or updated policy !'
+
+
+    def delete_policy(self, token, policy_name):
+        r = self.session.delete(
+            url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
+            headers = {
+                'X-Vault-Token': token,
+                'X-Vault-Namespace': self.namespace
+            }
+        )
+        if r.status_code != 200 and r.status_code != 204:
+            raise AssertionError(f'[{r.status_code}] Failed to delete policy !')
+        return 'Sucessfully deleted policy !'
 
     
     def list_roles(self, token):
-        r = self.session.get(
+        r = self.session.request(
+            method = 'LIST',
             url = f'{self.vault_url}/v1/auth/approle/role',
             headers = {
                 'X-Vault-Token': token,
                 'X-Vault-Namespace': self.namespace
-            },
-            params = {
-                'list': True
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to list roles ! {r.json()}')
         return r.json()
-    
+
+
+    def get_role(self, token, role_name):
+        r = self.session.get(
+            url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
+            headers = {
+                'X-Vault-Token': token,
+                'X-Vault-Namespace': self.namespace
+            }
+        )
+        if r.status_code != 200 and r.status_code != 204:
+            raise AssertionError(f'[{r.status_code}] Failed to get role ! {r.json()}')
+        return r.json()  
+
 
     def create_role(self, token, role_name, token_policies=['default']):
         r = self.session.post(
@@ -219,22 +270,9 @@ class Vault_Cluster:
                 'token_type': 'service'
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create role ! {r.json()}')
         return r.json()    
-
-
-    def get_role(self, token, role_name):
-        r = self.session.get(
-            url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
-        if r.status_code != 200:
-            raise AssertionError(f'[{r.status_code}] Failed to get role ! {r.json()}')
-        return r.json()   
 
 
     def delete_role(self, token, role_name):
@@ -245,7 +283,7 @@ class Vault_Cluster:
                 'X-Vault-Namespace': self.namespace
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to delete role ! {r.json()}')
         return r.json()   
 
@@ -258,9 +296,10 @@ class Vault_Cluster:
                 'X-Vault-Namespace': self.namespace
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get role_id ! {r.json()}')
-        return r.json()    
+        role_id = r.json()['data']['role_id']
+        return role_id   
 
 
     def create_secret_id(self, token, role_name):
@@ -275,9 +314,10 @@ class Vault_Cluster:
                 'num_uses': 0
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create secret_id ! {r.json()}')
-        return r.json()      
+        secret_id = r.json()['data']['secret_id']
+        return secret_id
     
 
     def destroy_secret_id(self, token, role_name, secret_id):
@@ -291,7 +331,7 @@ class Vault_Cluster:
                 'secret_id': secret_id
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to destroy secret_id ! {r.json()}')
         return r.json()  
 
@@ -308,10 +348,10 @@ class Vault_Cluster:
                 'secret_id': secrect_id
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get app token ! {r.json()}')
         app_token = r.json()['auth']['client_token']
-        return r.json()
+        return app_token
 
 
     def list_engines(self, token):
@@ -322,7 +362,7 @@ class Vault_Cluster:
                 'X-Vault-Namespace': self.namespace
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to list engines ! {r.json()}')
         return r.json()
     
@@ -338,7 +378,7 @@ class Vault_Cluster:
                 'type': engine_type
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create engine ! {r.json()}')
         return r.json()
     
@@ -351,7 +391,7 @@ class Vault_Cluster:
                 'X-Vault-Namespace': self.namespace
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to delete engine ! {r.json()}')
         return r.json()
     
@@ -367,7 +407,7 @@ class Vault_Cluster:
                 'list': True
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to list secrets ! {r.json()}')
         return r.json()
     
@@ -393,7 +433,7 @@ class Vault_Cluster:
                     'version': version
                 }
             )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get secret ! {r.json()}')
         secret = r.json()['data']['data']
         return secret
@@ -407,7 +447,7 @@ class Vault_Cluster:
                 'X-Vault-Namespace': self.namespace,
             },
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to unwrap secret ! {r.json()}')
         return r.json()
     
@@ -428,7 +468,7 @@ class Vault_Cluster:
                 # }
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create secret ! {r.json()}')
         return r.json()
     
@@ -447,7 +487,7 @@ class Vault_Cluster:
                 }
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to update secret ! {r.json()}')
         return r.json()
     
@@ -472,7 +512,7 @@ class Vault_Cluster:
                     'versions': versions
                 }
             )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to delete secret ! {r.json()}')
         return r.json()
     
@@ -488,7 +528,7 @@ class Vault_Cluster:
                 'versions': versions
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to undelete secret ! {r.json()}')
         return r.json()
     
@@ -504,7 +544,7 @@ class Vault_Cluster:
                 'versions': versions
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to destroy secret ! {r.json()}')
         return r.json()
     
@@ -517,7 +557,7 @@ class Vault_Cluster:
                 'X-Vault-Namespace': self.namespace
             }
         )
-        if r.status_code != 200:
+        if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to destroy secrets ! {r.json()}')
         return r.json()
     
@@ -562,23 +602,35 @@ if __name__ == '__main__':
         ldap_token = vault_cluster.get_ldap_token(ldap_user='RDR_BEMFG_NPI_P', ldap_password='MMPNPIrobot@a1')
         print(ldap_token)
 
-        # approle_enable =vault_cluster.enable_approle(token=ldap_token)
+        # approle_enable = vault_cluster.enable_approle(token=ldap_token)
         # print(approle_enable)
 
-        # policy_create = vault_cluster.create_policy(token=ldap_token, policy_name='admin-temp', secret_path='path1*', capabilities=['create', 'read', 'update', 'patch', 'delete', 'list'])
+        # policies = vault_cluster.list_policies(token=ldap_token)
+        # print(policies)
+
+        # policy = vault_cluster.get_policy(token=ldap_token, policy_name='admin-temp')
+        # print(policy)
+
+        # policy_create = vault_cluster.create_policy(token=ldap_token, policy_name='admin-temp', secret_path='path1*', capabilities=["create", "read", "update", "patch", "delete", "list"])
         # print(policy_create)
+
+        # policy_delete = vault_cluster.delete_policy(token=ldap_token, policy_name='admin-temp')
+        # print(policy_delete)
 
         # roles = vault_cluster.list_roles(token=ldap_token)
         # print(roles)
 
+        # role = vault_cluster.get_role(token=ldap_token, role_name='sample-role')
+        # print(role)
+
         # role_create = vault_cluster.create_role(token=ldap_token, role_name='sample-role', token_policies=['admin-temp'])
         # print(role_create)
 
-        # role_id = vault_cluster.get_role(token=ldap_token, role_name='sample-role')
-        # print(role_id)
-
         # role_delete = vault_cluster.delete_role(token=ldap_token, role_name='sample-role')
         # print(role_delete)
+
+        # role_id = vault_cluster.get_role(token=ldap_token, role_name='sample-role')
+        # print(role_id)
 
         # secret_id = vault_cluster.create_secret_id(token=ldap_token, role_name='sample-role')
         # print(secret_id)
