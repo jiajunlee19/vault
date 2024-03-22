@@ -231,7 +231,9 @@ class Vault_Cluster:
         return r.json()
 
 
-    def create_policy(self, token, policy_name, secret_path, capabilities=['read']):
+    def create_policy(self, token, policy_name, secret_path, capabilities=["read"]):
+        # capabilities = ["create", "read", "update", "patch", "delete", "list"]
+        cp = str(capabilities).replace('\'', '\"')
         r = self.session.post(
             url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
             headers = {
@@ -239,7 +241,7 @@ class Vault_Cluster:
                 'X-Vault-Namespace': self.namespace
             },
             json = {
-                "policy": "path \"secret/foo\" { capabilities: [\"create\", \"read\", \"update\", \"patch\", \"delete\", \"list\"] }"
+                "policy": f"path \"{secret_path}\" {{ capabilities = [{cp}] }}"
             }
         )
         if r.status_code != 200 and r.status_code != 204:
@@ -611,8 +613,8 @@ if __name__ == '__main__':
 
         # Init vault_cloud
         vault_cloud = Vault_Cloud(
-            app_client='WDHaBERtnpczq3eseYADewlQ2zZl8SV0', 
-            app_secret='Sn7_WS8S4QWDCCKnoXdulAE_EMl0IDO46a8WyxwUsjUNWwISB3qhMU-Nrm6ys_sG',
+            app_client='XXXXXXXXXXXXXXXXXXXX', 
+            app_secret='XXXXXXXXXXXXXXXXXXX',
             org_id = '1776a674-5d79-43af-8511-6942ccf9d701',
             project_id = 'f3ea2563-6385-467a-b5ee-76d6149b1c63',
             app_name = 'sample-app',
@@ -636,7 +638,7 @@ if __name__ == '__main__':
             namespace = 'mmpnpi'
         )
 
-        ldap_token = vault_cluster.get_ldap_token(ldap_user='RDR_BEMFG_NPI_P', ldap_password='MMPNPIrobot@a1')
+        ldap_token = vault_cluster.get_ldap_token(ldap_user='user', ldap_password='pwd')
         print(ldap_token)
 
         # auths = vault_cluster.list_auths(token=ldap_token)
