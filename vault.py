@@ -732,41 +732,44 @@ if __name__ == '__main__':
         #-------------------------------#
         ldap_token = ''
 
-        policies_to_create = [
-            {'name': 'kv-snowflake-full', 'path': 'kv/snowflake/*', 'cp': ["create", "read", "update", "patch", "delete", "list"]},
-            {'name': 'kv-snowflake-ro', 'path': 'kv/snowflake/*', 'cp': ["read", "list"]},
-            {'name': 'kv-snowflake-RDR-ro', 'path': 'kv/snowflake/RDR_*', 'cp': ["read", "list"]},
-        ]
-        for p in policies_to_create:
-            policy_create = vault_cluster.create_policy(token=ldap_token, policy_name=p['name'], secret_path=p['path'], capabilities=p['cp'])
+        policies_to_create = {
+            'kv-snowflake-full': {'path': 'kv/snowflake/*', 'cp': ["create", "read", "update", "patch", "delete", "list"]},
+            'kv-snowflake-ro': {'path': 'kv/snowflake/*', 'cp': ["read", "list"]},
+            'kv-snowflake-RDR-ro': {'path': 'kv/snowflake/RDR_*', 'cp': ["read", "list"]},
+        }
+        for p, v in policies_to_create.items():
+            policy_create = vault_cluster.create_policy(token=ldap_token, policy_name=p, secret_path=v['path'], capabilities=v['cp'])
             print(policy_create)
 
-
-        roles_to_create = [
-            {'name': 'kv-snowflake-RDR-ro', 'policies': ['kv-snowflake-RDR-ro']},
-        ]
-        for r in roles_to_create:
-            role_create = vault_cluster.create_role(token=ldap_token, role_name=r['name'], token_policies=r['policies'])
+        roles_to_create = {
+            'kv-snowflake-RDR-ro': {'policies': ['kv-snowflake-RDR-ro']},
+            'kv-snowflake-full': {'policies': ['kv-snowflake-full']},
+        }
+        for r, v in roles_to_create.items():
+            role_create = vault_cluster.create_role(token=ldap_token, role_name=r, token_policies=v['policies'])
             print(role_create)
 
-
-        role_to_find = [
-            'kv-snowflake-RDR-ro',    
-        ]
-        roles = []
-        for r in role_to_find:
+        roles = {}
+        for r in roles_to_create.keys():
             role_id = vault_cluster.get_role_id(token=ldap_token, role_name=r)
             secret_id = vault_cluster.create_secret_id(token=ldap_token, role_name=r)
             app_token = vault_cluster.get_app_token(token=ldap_token, role_id=role_id, secrect_id=secret_id)
-            roles.append({'role_name': r, 'role_id': role_id, 'secret_id': secret_id, 'app_token': app_token})
+            roles[r] = {'role_id': role_id, 'secret_id': secret_id, 'app_token': app_token}
         print(roles)
 
-        secret_to_find = [
-            {'path': '', 'engine': 'kv', 'app_token': ''}
-        ]
-        for s in secret_to_find:
-            secret, version = vault_cluster.get_secret(token=app_token, engine_name=s['engine'], secret_path=s['path'])
-            print(secret)
+        secret_to_create = {
+            {'password': 'pwd'}: {'path': 'kv/snowflake/RDR_BEMFG_NPI_P', 'engine': 'kv', 'app_token': roles['kv-snowflake-full']['app_token']},
+        }
+        for d, v in secret_to_create.items():
+            secret_create = vault_cluster.create_secret(token=v['app_token'], engine_name=v['engine'], secret_path=d['path'], secret_data=d)
+            print(secret_create)
 
-        # secret_create = vault_cluster.create_secret(token=app_token, engine_name='kv', secret_path='path1', secret_data={'key1': 'v1'})
-        # print(secret_create)
+        secret_to_find = {
+            'kv/snowflake/RDR_BEMFG_NPI_P': {'engine': 'kv', 'app_token': roles['kv-snowflake-RDR-ro']['app_token']},
+        }
+        secrets = []
+        for s, v in secret_to_find.items():
+            secret, version = vault_cluster.get_secret(token=v['app_token'], engine_name=v['engine'], secret_path=s)
+            secrets[s] = {'secret': secret, 'version': version}
+        print(secrets)
+
