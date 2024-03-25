@@ -246,7 +246,7 @@ class Vault_Cluster:
         )
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create policy !')
-        return 'Sucessfully created or updated policy !'
+        return 'Successfully created or updated policy !'
 
 
     def delete_policy(self, token, policy_name):
@@ -259,7 +259,7 @@ class Vault_Cluster:
         )
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to delete policy !')
-        return 'Sucessfully deleted policy !'
+        return 'Successfully deleted policy !'
 
     
     def list_roles(self, token):
@@ -638,8 +638,8 @@ if __name__ == '__main__':
             namespace = 'mmpnpi'
         )
 
-        ldap_token = vault_cluster.get_ldap_token(ldap_user='user', ldap_password='pwd')
-        print(ldap_token)
+        # ldap_token = vault_cluster.get_ldap_token(ldap_user='user', ldap_password='pwd')
+        # print(ldap_token)
 
         # auths = vault_cluster.list_auths(token=ldap_token)
         # print(auths)
@@ -677,7 +677,7 @@ if __name__ == '__main__':
         # role_delete = vault_cluster.delete_role(token=ldap_token, role_name='sample-role')
         # print(role_delete)
 
-        # role_id = vault_cluster.get_role(token=ldap_token, role_name='sample-role')
+        # role_id = vault_cluster.get_role_id(token=ldap_token, role_name='sample-role')
         # print(role_id)
 
         # secret_id = vault_cluster.create_secret_id(token=ldap_token, role_name='sample-role')
@@ -724,3 +724,49 @@ if __name__ == '__main__':
 
         # secrets_destroy = vault_cluster.destroy_secrets(token=app_token, engine_name='kv', secret_path='path1')
         # print(secrets_destroy)
+
+
+
+        #-------------------------------#
+        # Demo Usage
+        #-------------------------------#
+        ldap_token = ''
+
+        policies_to_create = [
+            {'name': 'kv-snowflake-full', 'path': 'kv/snowflake/*', 'cp': ["create", "read", "update", "patch", "delete", "list"]},
+            {'name': 'kv-snowflake-ro', 'path': 'kv/snowflake/*', 'cp': ["read", "list"]},
+            {'name': 'kv-snowflake-RDR-ro', 'path': 'kv/snowflake/RDR_*', 'cp': ["read", "list"]},
+        ]
+        for p in policies_to_create:
+            policy_create = vault_cluster.create_policy(token=ldap_token, policy_name=p['name'], secret_path=p['path'], capabilities=p['cp'])
+            print(policy_create)
+
+
+        roles_to_create = [
+            {'name': 'kv-snowflake-RDR-ro', 'policies': ['kv-snowflake-RDR-ro']},
+        ]
+        for r in roles_to_create:
+            role_create = vault_cluster.create_role(token=ldap_token, role_name=r['name'], token_policies=r['policies'])
+            print(role_create)
+
+
+        role_to_find = [
+            'kv-snowflake-RDR-ro',    
+        ]
+        roles = []
+        for r in role_to_find:
+            role_id = vault_cluster.get_role_id(token=ldap_token, role_name=r)
+            secret_id = vault_cluster.create_secret_id(token=ldap_token, role_name=r)
+            app_token = vault_cluster.get_app_token(token=ldap_token, role_id=role_id, secrect_id=secret_id)
+            roles.append({'role_name': r, 'role_id': role_id, 'secret_id': secret_id, 'app_token': app_token})
+        print(roles)
+
+        secret_to_find = [
+            {'path': '', 'engine': 'kv', 'app_token': ''}
+        ]
+        for s in secret_to_find:
+            secret, version = vault_cluster.get_secret(token=app_token, engine_name=s['engine'], secret_path=s['path'])
+            print(secret)
+
+        # secret_create = vault_cluster.create_secret(token=app_token, engine_name='kv', secret_path='path1', secret_data={'key1': 'v1'})
+        # print(secret_create)
