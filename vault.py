@@ -140,12 +140,15 @@ class Vault_Cluster:
 
         
     def get_ldap_token(self, ldap_user, ldap_password):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/auth/ldap/login/{ldap_user}',
-            json = {
-                'password': ldap_password
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/auth/ldap/login/{ldap_user}',
+                json = {
+                    'password': ldap_password
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get ldap_token for {ldap_user} ! {r.json()}')
         ldap_token = r.json()['auth']['client_token']
@@ -153,82 +156,100 @@ class Vault_Cluster:
     
 
     def list_auths(self, token):
-        r = self.session.get(
-            url = f'{self.vault_url}/v1/sys/auth',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.get(
+                url = f'{self.vault_url}/v1/sys/auth',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to list auths ! {r.json()}')
         return r.json() 
     
 
     def get_auth(self, token, auth_type):
-        r = self.session.get(
-            url = f'{self.vault_url}/v1/sys/auth/{auth_type}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.get(
+                url = f'{self.vault_url}/v1/sys/auth/{auth_type}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get auth type {auth_type} ! {r.json()}')
         return r.json()
     
 
     def enable_auth(self, token, auth_type):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/sys/auth/{auth_type}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            json = {
-                'type': {auth_type}
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/sys/auth/{auth_type}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                },
+                json = {
+                    'type': {auth_type}
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to enable auth type {auth_type} ! {r.json()}')
         return r.json()
     
 
     def disable_auth(self, token, auth_type):
-        r = self.session.delete(
-            url = f'{self.vault_url}/v1/sys/auth/{auth_type}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.delete(
+                url = f'{self.vault_url}/v1/sys/auth/{auth_type}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to disable auth type {auth_type} ! {r.json()}')
         return f'Successfully disable auth type {auth_type} !'
 
 
     def list_policies(self, token):
-        r = self.session.request(
-            method = 'LIST',
-            url = f'{self.vault_url}/v1/sys/policies/acl',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.request(
+                method = 'LIST',
+                url = f'{self.vault_url}/v1/sys/policies/acl',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to list policies ! {r.json()}')
         return r.json()
     
 
     def get_policy(self, token, policy_name):
-        r = self.session.get(
-            url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.get(
+                url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get policy ! {r.json()}')
         return r.json()
@@ -261,105 +282,126 @@ class Vault_Cluster:
                 "policy": f"path \"{metadata_path}\" {{ capabilities = {capabilities} }}\npath \"{data_path}\" {{ capabilities = {capabilities} }}\npath \"{path}\" {{ capabilities = {capabilities} }}"
             }
 
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            json = json
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                },
+                json = json
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create policy {policy_name} ! {r.json()}')
         return f'Successfully created or updated policy {policy_name} !'
 
 
     def delete_policy(self, token, policy_name):
-        r = self.session.delete(
-            url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.delete(
+                url = f'{self.vault_url}/v1/sys/policies/acl/{policy_name}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to delete policy {policy_name} ! {r.json()}')
         return f'Successfully deleted policy {policy_name} !'
 
     
     def list_roles(self, token):
-        r = self.session.request(
-            method = 'LIST',
-            url = f'{self.vault_url}/v1/auth/approle/role',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.request(
+                method = 'LIST',
+                url = f'{self.vault_url}/v1/auth/approle/role',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to list roles ! {r.json()}')
         return r.json()
 
 
     def get_role(self, token, role_name):
-        r = self.session.get(
-            url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.get(
+                url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get role {role_name} ! {r.json()}')
         return r.json()  
 
 
     def create_role(self, token, role_name, token_policies=['default']):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            json = {
-                'bind_secret_id': True,
-                'secret_id_num_uses': 0,
-                'secret_id_ttl': 0,
-                'token_ttl': '10m',
-                'token_max_ttl': '30m',
-                'token_policies': token_policies,
-                'token_no_default_policy': False,
-                'token_num_uses': 0,
-                'token_period': 0,
-                'token_type': 'service'
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                },
+                json = {
+                    'bind_secret_id': True,
+                    'secret_id_num_uses': 0,
+                    'secret_id_ttl': 0,
+                    'token_ttl': '10m',
+                    'token_max_ttl': '30m',
+                    'token_policies': token_policies,
+                    'token_no_default_policy': False,
+                    'token_num_uses': 0,
+                    'token_period': 0,
+                    'token_type': 'service'
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create role {role_name} ! {r.json()}')
         return f'Successfully created or updated {role_name} !'    
 
 
     def delete_role(self, token, role_name):
-        r = self.session.delete(
-            url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.delete(
+                url = f'{self.vault_url}/v1/auth/approle/role/{role_name}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to delete role {role_name} ! {r.json()}')
         return f'Successfully delete role {role_name} !'   
 
 
     def get_role_id(self, token, role_name):
-        r = self.session.get(
-            url = f'{self.vault_url}/v1/auth/approle/role/{role_name}/role-id',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.get(
+                url = f'{self.vault_url}/v1/auth/approle/role/{role_name}/role-id',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get role_id for {role_name} ! {r.json()}')
         role_id = r.json()['data']['role_id']
@@ -367,17 +409,20 @@ class Vault_Cluster:
 
 
     def create_secret_id(self, token, role_name):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/auth/approle/role/{role_name}/secret-id',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            json = {
-                'ttl': 600,
-                'num_uses': 0
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/auth/approle/role/{role_name}/secret-id',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                },
+                json = {
+                    'ttl': 600,
+                    'num_uses': 0
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create secret_id for {role_name} ! {r.json()}')
         secret_id = r.json()['data']['secret_id']
@@ -385,33 +430,39 @@ class Vault_Cluster:
     
 
     def destroy_secret_id(self, token, role_name, secret_id):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/auth/approle/role/{role_name}/secret-id/destroy',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            json = {
-                'secret_id': secret_id
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/auth/approle/role/{role_name}/secret-id/destroy',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                },
+                json = {
+                    'secret_id': secret_id
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to destroy secret_id for {role_name} ! {r.json()}')
         return f'Successfully destroyed secret_id for {role_name} !'
 
 
     def get_app_token(self, token, role_id, secret_id):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/auth/approle/login',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            json = {
-                'role_id': role_id,
-                'secret_id': secret_id
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/auth/approle/login',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                },
+                json = {
+                    'role_id': role_id,
+                    'secret_id': secret_id
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get app token for {role_id} ! {r.json()}')
         app_token = r.json()['auth']['client_token']
@@ -419,69 +470,84 @@ class Vault_Cluster:
 
 
     def list_engines(self, token):
-        r = self.session.get(
-            url = f'{self.vault_url}/v1/sys/mounts',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.get(
+                url = f'{self.vault_url}/v1/sys/mounts',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to list engines ! {r.json()}')
         return r.json()
 
 
     def get_engine(self, token, engine_name):
-        r = self.session.get(
-            url = f'{self.vault_url}/v1/sys/mounts/{engine_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.get(
+                url = f'{self.vault_url}/v1/sys/mounts/{engine_name}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get engine {engine_name} ! {r.json()}')
         return r.json()
     
 
     def create_engine(self, token, engine_name, engine_type):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/sys/mounts/{engine_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            data = {
-                'type': engine_type
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/sys/mounts/{engine_name}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                },
+                data = {
+                    'type': engine_type
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create engine {engine_name} ! {r.json()}')
         return f'Successfully created engine {engine_name} !'
     
 
     def delete_engine(self, token, engine_name):
-        r = self.session.delete(
-            url = f'{self.vault_url}/v1/sys/mounts/{engine_name}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.delete(
+                url = f'{self.vault_url}/v1/sys/mounts/{engine_name}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to delete engine {engine_name} ! {r.json()}')
         return f'Successfully deleted engine {engine_name} !'
     
     
     def list_secrets(self, token, engine_name, secret_path):
-        r = self.session.request(
-            method = 'LIST',
-            url = f'{self.vault_url}/v1/{engine_name}/metadata/{secret_path}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.request(
+                method = 'LIST',
+                url = f'{self.vault_url}/v1/{engine_name}/metadata/{secret_path}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to list secrets in {engine_name}/{secret_path} ! {r.json()}')
         return r.json()
@@ -494,13 +560,16 @@ class Vault_Cluster:
         }
         # if wrap:
         #     headers['X-Vault-Wrap-TTL'] = 120
-        r = self.session.get(
-            url = f'{self.vault_url}/v1/{engine_name}/data/{secret_path}',
-            headers = headers,
-            params = {
-                'version': version
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.get(
+                url = f'{self.vault_url}/v1/{engine_name}/data/{secret_path}',
+                headers = headers,
+                params = {
+                    'version': version
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to get secret in {engine_name}/{secret_path} ! {r.json()}')
         secret = r.json()['data']['data']
@@ -509,13 +578,16 @@ class Vault_Cluster:
     
 
     def unwrap_secret(self, wrapping_token):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/sys/wrapping/unwrap',
-            headers = {
-                'X-Vault-Token': wrapping_token,
-                'X-Vault-Namespace': self.namespace,
-            },
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/sys/wrapping/unwrap',
+                headers = {
+                    'X-Vault-Token': wrapping_token,
+                    'X-Vault-Namespace': self.namespace,
+                },
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to unwrap secret for {wrapping_token} ! {r.json()}')
         secret = r.json()['data']
@@ -523,50 +595,76 @@ class Vault_Cluster:
     
     
     def create_secret(self, token, engine_name, secret_path, secret_data):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/{engine_name}/data/{secret_path}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            json = {
-                'data': secret_data
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/{engine_name}/data/{secret_path}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                },
+                json = {
+                    'data': secret_data
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to create secret in {engine_name}/{secret_path} ! {r.json()}')
         return f'Successfully created secret in {secret_path} !'
     
 
     def update_secret(self, token, engine_name, secret_path, secret_data):
-        r = self.session.patch(
-            url = f'{self.vault_url}/v1/{engine_name}/data/{secret_path}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace,
-                'Content-Type': 'application/merge-patch+json'
-            },
-            json = {
-                'data': secret_data
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.patch(
+                url = f'{self.vault_url}/v1/{engine_name}/data/{secret_path}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace,
+                    'Content-Type': 'application/merge-patch+json'
+                },
+                json = {
+                    'data': secret_data
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to update secret in {engine_name}/{secret_path} ! {r.json()}')
         return r.json()
     
     
     def delete_secret(self, token, engine_name, secret_path, versions=[]):
-        if len(versions) < 1:
+        for i in range(0, self.max_retry):
+            if len(versions) < 1:
+                r = self.session.post(
+                    url = f'{self.vault_url}/v1/{engine_name}/delete/{secret_path}',
+                    headers = {
+                        'X-Vault-Token': token,
+                        'X-Vault-Namespace': self.namespace
+                    }
+                )
+            else:
+                r = self.session.post(
+                    url = f'{self.vault_url}/v1/{engine_name}/delete/{secret_path}',
+                    headers = {
+                        'X-Vault-Token': token,
+                        'X-Vault-Namespace': self.namespace
+                    },
+                    json = {
+                        'versions': versions
+                    }
+                )
+            if r.status_code != 412:
+                break
+        if r.status_code != 200 and r.status_code != 204:
+            raise AssertionError(f'[{r.status_code}] Failed to delete secret in {engine_name}/{secret_path} !')
+        return f'Successfully deleted secret in {engine_name}/{secret_path} !'
+    
+    
+    def undelete_secret(self, token, engine_name, secret_path, versions):
+        for i in range(0, self.max_retry):
             r = self.session.post(
-                url = f'{self.vault_url}/v1/{engine_name}/delete/{secret_path}',
-                headers = {
-                    'X-Vault-Token': token,
-                    'X-Vault-Namespace': self.namespace
-                }
-            )
-        else:
-            r = self.session.post(
-                url = f'{self.vault_url}/v1/{engine_name}/delete/{secret_path}',
+                url = f'{self.vault_url}/v1/{engine_name}/undelete/{secret_path}',
                 headers = {
                     'X-Vault-Token': token,
                     'X-Vault-Namespace': self.namespace
@@ -575,51 +673,43 @@ class Vault_Cluster:
                     'versions': versions
                 }
             )
-        if r.status_code != 200 and r.status_code != 204:
-            raise AssertionError(f'[{r.status_code}] Failed to delete secret in {engine_name}/{secret_path} !')
-        return f'Successfully deleted secret in {engine_name}/{secret_path} !'
-    
-    
-    def undelete_secret(self, token, engine_name, secret_path, versions):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/{engine_name}/undelete/{secret_path}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            json = {
-                'versions': versions
-            }
-        )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to undelete secret in {engine_name}/{secret_path} !')
         return f'Successfully undelete secret in {engine_name}/{secret_path} !'
     
 
     def destroy_secret(self, token, engine_name, secret_path, versions):
-        r = self.session.post(
-            url = f'{self.vault_url}/v1/{engine_name}/destroy/{secret_path}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            },
-            json = {
-                'versions': versions
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.post(
+                url = f'{self.vault_url}/v1/{engine_name}/destroy/{secret_path}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                },
+                json = {
+                    'versions': versions
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to destroy secret in {engine_name}/{secret_path} !')
         return f'Successfully destroyed secret in {engine_name}/{secret_path} !'
     
 
     def destroy_secrets(self, token, engine_name, secret_path):
-        r = self.session.delete(
-            url = f'{self.vault_url}/v1/{engine_name}/metadata/{secret_path}',
-            headers = {
-                'X-Vault-Token': token,
-                'X-Vault-Namespace': self.namespace
-            }
-        )
+        for i in range(0, self.max_retry):
+            r = self.session.delete(
+                url = f'{self.vault_url}/v1/{engine_name}/metadata/{secret_path}',
+                headers = {
+                    'X-Vault-Token': token,
+                    'X-Vault-Namespace': self.namespace
+                }
+            )
+            if r.status_code != 412:
+                break
         if r.status_code != 200 and r.status_code != 204:
             raise AssertionError(f'[{r.status_code}] Failed to destroy secrets in {engine_name}/{secret_path} !')
         return f'Successfully destroyed secrets in {engine_name}/{secret_path} !'
@@ -766,30 +856,33 @@ if __name__ == '__main__':
             'kv-rpa-prod-full': {'path': 'rpa/prod/*', 'access': 'full', 'engine': 'kv'},
             'kv-rpa-prod-ro': {'path': 'rpa/prod/*', 'access': 'ro', 'engine': 'kv'},
         }
-        for p, v in policies_to_create.items():
-            policy_create = vault_cluster.create_policy(token=ldap_token, policy_name=p, access=v['access'], engine_name=v['engine'], secret_path=v['path'])
-            print(policy_create)
+        # for p, v in policies_to_create.items():
+        #     policy_create = vault_cluster.create_policy(token=ldap_token, policy_name=p, access=v['access'], engine_name=v['engine'], secret_path=v['path'])
+        #     print(policy_create)
 
         roles_to_create = {
             'kv-snowflake-prod-RDR-ro': {'policies': ['kv-snowflake-prod-RDR-ro']},
             'kv-rpa-prod-ro': {'policies': ['kv-rpa-prod-ro']},
         }
-        for r, v in roles_to_create.items():
-            role_create = vault_cluster.create_role(token=ldap_token, role_name=r, token_policies=v['policies'])
-            print(role_create)
+        # for r, v in roles_to_create.items():
+        #     role_create = vault_cluster.create_role(token=ldap_token, role_name=r, token_policies=v['policies'])
+        #     print(role_create)
 
         roles = {}
-        for r in roles_to_create.keys():
-            role_id = vault_cluster.get_role_id(token=ldap_token, role_name=r)
-            secret_id = vault_cluster.create_secret_id(token=ldap_token, role_name=r)
-            time.sleep(0.5)
-            app_token = vault_cluster.get_app_token(token=ldap_token, role_id=role_id, secret_id=secret_id)
-            roles[r] = {'role_id': role_id, 'secret_id': secret_id, 'app_token': app_token}
-        print(roles)
+        # for r in roles_to_create.keys():
+        #     role_id = vault_cluster.get_role_id(token=ldap_token, role_name=r)
+        #     secret_id = vault_cluster.create_secret_id(token=ldap_token, role_name=r)
+        #     time.sleep(0.5)
+        #     app_token = vault_cluster.get_app_token(token=ldap_token, role_id=role_id, secret_id=secret_id)
+        #     roles[r] = {'role_id': role_id, 'secret_id': secret_id, 'app_token': app_token}
+        # print(roles)
+
+        snowflake_token = ''
+        rpa_token = ''
 
         secret_to_find = {
-            'snowflake/prod/RDR_BEMFG_NPI_P': {'engine': 'kv', 'app_token': roles['kv-snowflake-prod-ro']['app_token']},
-            'rpa/prod/RPA_BC000009': {'engine': 'kv', 'app_token': roles['kv-rpa-prod-ro']['app_token']},
+            'snowflake/prod/RDR_BEMFG_NPI_P': {'engine': 'kv', 'app_token': snowflake_token},
+            'rpa/prod/RPA_BC000009': {'engine': 'kv', 'app_token': rpa_token},
         }
 
         secrets = []
