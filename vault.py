@@ -128,12 +128,14 @@ class Vault_Cloud:
 
 class Vault_Cluster:
 
-    def __init__(self, vault_url, namespace):        
+    def __init__(self, vault_url, namespace, max_retry=5):        
         self.vault_url = vault_url
         self.namespace = namespace
 
         self.session = requests.session()
         self.session.mount('https://', TLSAdapter())
+
+        self.max_retry = max_retry
         return
 
         
@@ -654,8 +656,14 @@ if __name__ == '__main__':
         # Init vault_cluster
         vault_cluster = Vault_Cluster(
             vault_url = 'https://vault.micron.com',
-            namespace = 'mmpnpi'
+            namespace = 'mmpnpi',
+            max_retry = 5
         )
+
+
+        #########################
+        ### Usage ###############
+        #########################
 
         # ldap_token = vault_cluster.get_ldap_token(ldap_user='user', ldap_password='pwd')
         # print(ldap_token)
@@ -752,9 +760,11 @@ if __name__ == '__main__':
         ldap_token = ''
 
         policies_to_create = {
-            'kv-snowflake-prod-full': {'path': 'kv/snowflake/prod/*', 'access': 'full', 'engine': 'kv'},
-            'kv-snowflake-prod-ro': {'path': 'kv/snowflake/prod/*', 'access': 'ro', 'engine': 'kv'},
-            'kv-snowflake-prod-RDR-ro': {'path': 'kv/snowflake/prod/RDR_*', 'access': 'ro', 'engine': 'kv'},
+            'kv-snowflake-prod-full': {'path': 'snowflake/prod/*', 'access': 'full', 'engine': 'kv'},
+            'kv-snowflake-prod-ro': {'path': 'snowflake/prod/*', 'access': 'ro', 'engine': 'kv'},
+            'kv-snowflake-prod-RDR-ro': {'path': 'snowflake/prod/RDR_*', 'access': 'ro', 'engine': 'kv'},
+            'kv-rpa-prod-full': {'path': 'rpa/prod/*', 'access': 'full', 'engine': 'kv'},
+            'kv-rpa-prod-ro': {'path': 'rpa/prod/*', 'access': 'ro', 'engine': 'kv'},
         }
         for p, v in policies_to_create.items():
             policy_create = vault_cluster.create_policy(token=ldap_token, policy_name=p, access=v['access'], engine_name=v['engine'], secret_path=v['path'])
@@ -762,7 +772,7 @@ if __name__ == '__main__':
 
         roles_to_create = {
             'kv-snowflake-prod-RDR-ro': {'policies': ['kv-snowflake-prod-RDR-ro']},
-            'kv-snowflake-prod-full': {'policies': ['kv-snowflake-prod-full']},
+            'kv-rpa-prod-ro': {'policies': ['kv-rpa-prod-ro']},
         }
         for r, v in roles_to_create.items():
             role_create = vault_cluster.create_role(token=ldap_token, role_name=r, token_policies=v['policies'])
@@ -777,16 +787,14 @@ if __name__ == '__main__':
             roles[r] = {'role_id': role_id, 'secret_id': secret_id, 'app_token': app_token}
         print(roles)
 
-        secret_to_create = {
-            'kv/snowflake/prod/RDR_BEMFG_NPI_P':  {'data': {'password': 'pwd'}, 'engine': 'kv', 'app_token': roles['kv-snowflake-prod-full']['app_token']},
+        secret_to_find = {
+            'snowflake/prod/RDR_BEMFG_NPI_P': {'engine': 'kv', 'app_token': roles['kv-snowflake-prod-ro']['app_token']},
+            'rpa/prod/RPA_BC000009': {'engine': 'kv', 'app_token': roles['kv-rpa-prod-ro']['app_token']},
         }
-        for path, v in secret_to_create.items():
-            secret_create = vault_cluster.create_secret(token=v['app_token'], engine_name=v['engine'], secret_path=path, secret_data=v['data'])
-            print(secret_create)
 
         secrets = []
-        for path, v in secret_to_create.items():
+        for path, v in secret_to_find.items():
             secret, version = vault_cluster.get_secret(token=v['app_token'], engine_name=v['engine'], secret_path=path)
-            secrets[s] = {'secret': secret, 'version': version}
+            secrets[path] = {'secret': secret, 'version': version}
         print(secrets)
 
